@@ -1,77 +1,76 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Absensi Lokasi Siswa</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=geometry"></script>
-  </head>
-  <body>
-    <h2>Absensi Lokasi Siswa</h2>
-    <form id="absenForm">
-      <label>Nama: </label>
-      <input type="text" id="nama" required>
-      <button type="submit">Absen Sekarang</button>
-    </form>
-    <p id="info">Mendeteksi lokasi...</p>
-    <div id="map" style="height:400px;width:100%;"></div>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Absensi Siswa dengan Lokasi</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    #map { height: 400px; margin-top: 10px; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input, button { padding: 8px; margin-top: 10px; width: 100%; }
+  </style>
+</head>
+<body>
+  <h2>Absensi Siswa</h2>
+  <label>Nama Siswa:</label>
+  <input type="text" id="nama" placeholder="Masukkan nama">
 
-    <script>
-      var sekolah = {lat: -7.498, lng: 112.705}; // Lokasi sekolah
-      var userPos = null;
+  <div id="map"></div>
+  
+  <p><b>Lokasi dipilih:</b> <span id="coords">Belum ada</span></p>
 
-      function initMap() {
-        var map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 16,
-          center: sekolah
-        });
-        new google.maps.Marker({position: sekolah, map: map, label: "Sekolah"});
+  <button onclick="simpanData()">Simpan Absensi</button>
 
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(function(position) {
-            userPos = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude
-            };
-            new google.maps.Marker({position: userPos, map: map, label: "Saya"});
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    let lat, lng;
+    let map = L.map('map').setView([-7.250445, 112.768845], 13); // default Surabaya
 
-            var dist = google.maps.geometry.spherical.computeDistanceBetween(
-              new google.maps.LatLng(userPos.lat, userPos.lng),
-              new google.maps.LatLng(sekolah.lat, sekolah.lng)
-            );
+    // OSM tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-            var info = document.getElementById("info");
-            if (dist <= 10000) {
-              info.innerHTML = "✅ Anda berada di area sekolah (Hadir).";
-            } else {
-              info.innerHTML = "❌ Lokasi Anda di luar area sekolah (Tidak Hadir).";
-            }
-          });
-        }
+    let marker;
+
+    // Klik peta untuk ambil koordinat
+    map.on('click', function(e) {
+      lat = e.latlng.lat;
+      lng = e.latlng.lng;
+
+      if (marker) map.removeLayer(marker);
+      marker = L.marker([lat, lng]).addTo(map);
+
+      document.getElementById("coords").innerText = lat + ", " + lng;
+    });
+
+    async function simpanData() {
+      const nama = document.getElementById("nama").value;
+      if (!nama || !lat || !lng) {
+        alert("Isi nama dan pilih lokasi di peta!");
+        return;
       }
 
-      document.getElementById("absenForm").addEventListener("submit", function(e) {
-        e.preventDefault();
-        var nama = document.getElementById("nama").value;
-        var status = document.getElementById("info").innerText;
+      let payload = { nama: nama, lat: lat, lng: lng };
 
-        if (userPos) {
-          fetch("https://script.google.com/macros/s/AKfycbwUNMq9X2gEM3JdJfZpNw8l3M90wCdGha5BCYc6GEglNOU9HeEfIRqOZG9-wNuavGNvjg/exec {
-            method: "POST",
-            body: JSON.stringify({
-              nama: nama,
-              lat: userPos.lat,
-              lng: userPos.lng,
-              status: status
-            })
-          }).then(() => {
-            alert("Absensi berhasil!");
-          });
-        } else {
-          alert("Lokasi belum terdeteksi.");
+      try {
+        let res = await fetch("https://script.google.com/macros/s/AKfycbwUNMq9X2gEM3JdJfZpNw8l3M90wCdGha5BCYc6GEglNOU9HeEfIRqOZG9-wNuavGNvjg/exec", {
+          method: "POST",
+          contentType: "application/json",
+          body: JSON.stringify(payload)
+        });
+
+        let json = await res.json();
+        if (json.status === "success") {
+          alert("Absensi berhasil disimpan!");
+          document.getElementById("nama").value = "";
+          document.getElementById("coords").innerText = "Belum ada";
+          if (marker) map.removeLayer(marker);
         }
-      });
-
-      window.onload = initMap;
-    </script>
-  </body>
+      } catch (err) {
+        alert("Gagal menyimpan: " + err);
+      }
+    }
+  </script>
+</body>
 </html>
