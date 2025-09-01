@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Absensi Lokasi Siswa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+    <script>
+      function initMap() {
+        // Lokasi sekolah (contoh: Sidoarjo)
+        var sekolah = {lat: -7.446, lng: 112.717};
+
+        // Tampilkan peta
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 16,
+          center: sekolah
+        });
+        var marker = new google.maps.Marker({position: sekolah, map: map, label: "Sekolah"});
+
+        // Deteksi lokasi pengguna
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            var pos = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+
+            new google.maps.Marker({
+              position: pos,
+              map: map,
+              label: "Saya"
+            });
+
+            // Hitung jarak dengan sekolah
+            var dist = google.maps.geometry.spherical.computeDistanceBetween(
+              new google.maps.LatLng(pos.lat, pos.lng),
+              new google.maps.LatLng(sekolah.lat, sekolah.lng)
+            );
+
+            var info = document.getElementById("info");
+            if (dist <= 300) {
+              info.innerHTML = "✅ Anda berada di area sekolah (Hadir).";
+            } else {
+              info.innerHTML = "❌ Lokasi Anda di luar area sekolah (Tidak Hadir).";
+            }
+          });
+        }
+      }
+    </script>
+  </head>
+  <body onload="initMap()">
+    <h2>Absensi Lokasi Siswa</h2>
+    <div id="map" style="height:400px;width:100%;"></div>
+    <p id="info">Mendeteksi lokasi...</p>
+  </body>
+</html>
